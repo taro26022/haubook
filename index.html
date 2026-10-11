@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>家計簿</title>
+  <meta name="description" content="1週間の収支を記録して集計する家計簿アプリ。データは端末の中だけに保存されます。">
+  <meta name="theme-color" content="#1f7a5c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="家計簿">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <!-- 週の収支 -->
+    <section id="view-week" class="view">
+      <header class="week-header">
+        <button id="prev-week" type="button" class="icon-btn" aria-label="前の週">‹</button>
+        <div class="week-title">
+          <div id="week-sub" class="week-sub"></div>
+          <h1 id="week-range"></h1>
+        </div>
+        <button id="next-week" type="button" class="icon-btn" aria-label="次の週">›</button>
+      </header>
+      <div class="this-week-row"><button id="this-week" type="button" class="text-btn" hidden>今週に戻る</button></div>
+
+      <div class="totals">
+        <div class="total"><span class="label">収入</span><span id="sum-income" class="value income"></span></div>
+        <div class="total"><span class="label">支出</span><span id="sum-expense" class="value"></span></div>
+        <div class="total"><span class="label">差額</span><span id="sum-balance" class="value"></span></div>
+      </div>
+
+      <section class="card">
+        <h2>カテゴリ別の支出</h2>
+        <ul id="breakdown" class="breakdown"></ul>
+        <p id="breakdown-empty" class="empty">この週の支出はまだありません。</p>
+      </section>
+
+      <section class="card">
+        <h2>記録</h2>
+        <div id="entry-list"></div>
+        <p id="list-empty" class="empty">この週の記録はまだありません。右下の「＋」から追加できます。</p>
+      </section>
+    </section>
+
+    <!-- 設定 -->
+    <section id="view-settings" class="view" hidden>
+      <header class="page-header"><h1>設定</h1></header>
+
+      <section class="card">
+        <h2>カテゴリ</h2>
+        <div class="segmented" role="radiogroup" aria-label="カテゴリの種類">
+          <label><input type="radio" name="cat-type" value="expense" checked><span>支出</span></label>
+          <label><input type="radio" name="cat-type" value="income"><span>収入</span></label>
+        </div>
+        <ul id="category-list" class="category-list"></ul>
+        <form id="category-add" class="inline-form">
+          <input id="category-name" type="text" maxlength="20" placeholder="新しいカテゴリ名" autocomplete="off" aria-label="新しいカテゴリ名">
+          <button type="submit" class="secondary-btn">追加</button>
+        </form>
+        <p class="note">記録で使っているカテゴリは削除できません(名前の変更はできます)。</p>
+      </section>
+
+      <section class="card">
+        <h2>バックアップ</h2>
+        <p class="note">データはこの端末のブラウザの中だけに保存されています。ブラウザのデータが消えると記録も消えるので、ときどき書き出して iCloud Drive などに保存してください。</p>
+        <p id="last-export" class="note strong"></p>
+        <button id="export-btn" type="button" class="primary-btn">JSON ファイルに書き出す</button>
+        <label class="secondary-btn file-btn">
+          JSON ファイルから読み込む
+          <input id="import-input" type="file" accept="application/json,.json">
+        </label>
+        <p class="note">読み込むと、今のデータはすべてバックアップの内容に置き換わります。</p>
+      </section>
+
+      <section class="card">
+        <h2>このアプリについて</h2>
+        <dl class="about">
+          <dt>バージョン</dt><dd id="app-version"></dd>
+          <dt>記録の件数</dt><dd><span id="entry-count"></span> 件</dd>
+          <dt>データの永続保存</dt><dd id="persist-status"></dd>
+        </dl>
+        <p class="note">入力したデータは端末の外に送信しません。</p>
+      </section>
+    </section>
+  </main>
+
+  <button id="add-btn" type="button" class="fab" aria-label="記録を追加">＋</button>
+
+  <nav class="tabbar" aria-label="画面の切り替え">
+    <button type="button" class="tab active" data-view="week">週の収支</button>
+    <button type="button" class="tab" data-view="settings">設定</button>
+  </nav>
+
+  <!-- 記録の入力・編集 -->
+  <dialog id="entry-dialog" aria-labelledby="entry-title">
+    <form id="entry-form" novalidate>
+      <div class="sheet-header">
+        <button type="button" id="entry-cancel" class="text-btn">キャンセル</button>
+        <h2 id="entry-title">記録を追加</h2>
+        <button type="submit" class="text-btn strong">保存</button>
+      </div>
+      <div class="sheet-body">
+        <div class="segmented type-switch" role="radiogroup" aria-label="支出か収入か">
+          <label><input type="radio" name="type" value="expense" checked><span>支出</span></label>
+          <label><input type="radio" name="type" value="income"><span>収入</span></label>
+        </div>
+
+        <label class="field">
+          <span class="field-label">金額(円)</span>
+          <span class="amount-input">
+            <span aria-hidden="true">¥</span>
+            <input id="entry-amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="0" enterkeyhint="done">
+          </span>
+        </label>
+
+        <fieldset class="field">
+          <legend class="field-label">カテゴリ</legend>
+          <div id="entry-categories" class="chips"></div>
+        </fieldset>
+
+        <label class="field">
+          <span class="field-label">日付</span>
+          <input id="entry-date" name="date" type="date" required>
+        </label>
+
+        <label class="field">
+          <span class="field-label">メモ(任意)</span>
+          <input id="entry-memo" name="memo" type="text" maxlength="100" autocomplete="off">
+        </label>
+
+        <p id="entry-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="primary-btn">保存</button>
+        <button type="button" id="entry-delete" class="danger-btn" hidden>この記録を削除</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
